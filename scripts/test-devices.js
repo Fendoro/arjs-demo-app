@@ -5,6 +5,7 @@ function registerTestDevices() {
 	var myDevices = []
 	var usedDevices = []
 	var FADE_DURATION = 500
+	var socket
 
 	$(document).ready(function () {
 		$.ajax(
@@ -31,42 +32,41 @@ function registerTestDevices() {
 					})
 				}
 			})
-		setInterval(function () {
-			$.ajax({
-				crossDomain: true,
-				dataType: 'json',
-				type: 'GET',
-				url: `${API}devices`,
-				success: function (data) {
-					var newUsedDevices = data.usedDevices
-					newUsedDevices.forEach(function (newUsedDevice) {
-						var index = usedDevices.findIndex(function (usedDevice) {
-							return usedDevice.id === newUsedDevice.id
-						})
-						if (index === -1) {
-							usedDevices.push(newUsedDevice)
-							updateAvailableDevices(newUsedDevice.id, false)
-						}
-					})
-					var deleteDevices = []
-					usedDevices.forEach(function (usedDevice) {
-						var index = newUsedDevices.findIndex(function (newUsedDevice) {
-							return usedDevice.id === newUsedDevice.id
-						})
-						if (index === -1) {
-							deleteDevices.push(usedDevice.id)
-							updateAvailableDevices(usedDevice.id, false)
-						}
-					})
-					usedDevices = usedDevices.filter(function (usedDevice) {
-						return deleteDevices.indexOf(usedDevice.id) === -1
-					})
-				},
-				error: function () {
+		socket = new WebSocket("ws://62c6aa5c.ngrok.io");
+		socket.onopen = function(){
+			console.log('onopen')
+		}
 
+		socket.onmessage = function(msg){
+			console.log(msg)
+			var newUsedDevices = msg.usedDevices
+			newUsedDevices.forEach(function (newUsedDevice) {
+				var index = usedDevices.findIndex(function (usedDevice) {
+					return usedDevice.id === newUsedDevice.id
+				})
+				if (index === -1) {
+					usedDevices.push(newUsedDevice)
+					updateAvailableDevices(newUsedDevice.id, false)
 				}
 			})
-		}, 500)
+			var deleteDevices = []
+			usedDevices.forEach(function (usedDevice) {
+				var index = newUsedDevices.findIndex(function (newUsedDevice) {
+					return usedDevice.id === newUsedDevice.id
+				})
+				if (index === -1) {
+					deleteDevices.push(usedDevice.id)
+					updateAvailableDevices(usedDevice.id, false)
+				}
+			})
+			usedDevices = usedDevices.filter(function (usedDevice) {
+				return deleteDevices.indexOf(usedDevice.id) === -1
+			})
+		}
+
+		socket.onclose = function(){
+			console.log('onclose')
+		}
 	})
 
 	function updateDevices() {
@@ -140,34 +140,51 @@ function registerTestDevices() {
 			var device = devices.find(function (device) {
 				return device.id === deviceId
 			})
-			$.post(`${API}device/take`, {deviceId: deviceId}, function (data) {
-				myDevices.push(device)
-				usedDevices = data.usedDevices
-				updateAvailableDevices(deviceId, true)
-			}).fail(function(response) {
-				myDevices.push(device)
-				usedDevices.push(device)
-				updateAvailableDevices(deviceId, true)
-			});
+			myDevices.push(device)
+			usedDevices.push(device)
+			updateAvailableDevices(deviceId, true)
+			socket.send({
+				type: 'take',
+				deviceId: deviceId
+			})
+			// $.post(`${API}device/take`, {deviceId: deviceId}, function (data) {
+			// 	myDevices.push(device)
+			// 	usedDevices = data.usedDevices
+			// 	updateAvailableDevices(deviceId, true)
+			// }).fail(function(response) {
+			// 	myDevices.push(device)
+			// 	usedDevices.push(device)
+			// 	updateAvailableDevices(deviceId, true)
+			// });
 		}
 	}
 
 	function returnDevice(deviceId) {
-		$.post(`${API}device/return`, {deviceId: deviceId}, function (data) {
-			myDevices = myDevices.filter(function (device) {
-				return device.id !== deviceId
-			})
-			usedDevices = data.usedDevices
-			updateAvailableDevices(deviceId, true)
-		}).fail(function(response) {
-			myDevices = myDevices.filter(function (device) {
-				return device.id !== deviceId
-			})
-			usedDevices = usedDevices.filter(function (device) {
-				return device.id !== deviceId
-			})
-			updateAvailableDevices(deviceId, true)
-		});
+		myDevices = myDevices.filter(function (device) {
+			return device.id !== deviceId
+		})
+		usedDevices = usedDevices.filter(function (device) {
+			return device.id !== deviceId
+		})
+		socket.send({
+			type: 'return',
+			deviceId: deviceId
+		})
+		// $.post(`${API}device/return`, {deviceId: deviceId}, function (data) {
+		// 	myDevices = myDevices.filter(function (device) {
+		// 		return device.id !== deviceId
+		// 	})
+		// 	usedDevices = data.usedDevices
+		// 	updateAvailableDevices(deviceId, true)
+		// }).fail(function(response) {
+		// 	myDevices = myDevices.filter(function (device) {
+		// 		return device.id !== deviceId
+		// 	})
+		// 	usedDevices = usedDevices.filter(function (device) {
+		// 		return device.id !== deviceId
+		// 	})
+		// 	updateAvailableDevices(deviceId, true)
+		// });
 	}
 
 	function updateAvailableDevices(deviceId, isMyActivity) {
