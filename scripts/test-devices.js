@@ -1,7 +1,6 @@
 function registerTestDevices() {
 	$.support.cors = true
-	//var API = `https://192.168.188.50:3000/api/`
-	var API = `https://1f7905e6.ngrok.io/api/`
+	var API = `https://62c6aa5c.ngrok.io/api/`
 	var devices = []
 	var myDevices = []
 	var usedDevices = []
