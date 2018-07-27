@@ -66,7 +66,7 @@ function registerTestDevices() {
 
 				}
 			})
-		}, 1000)
+		}, 500)
 	})
 
 	function updateDevices() {
